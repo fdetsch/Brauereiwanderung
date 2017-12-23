@@ -5,15 +5,8 @@
 
 ```sh
 
-wget http://download.geofabrik.de/europe/germany/bayern-latest.osm.bz2 ./data/osm-latest.osm.bz2
+wget http://download.geofabrik.de/europe/germany/bayern-latest.osm.bz2 ./data/bayern-latest.osm.bz2
 
-# Do manual preprocessing. Unfortunately this is necessary right now
-docker run -t -v $(pwd)/data:/data osrm/osrm-backend osrm-extract -p /opt/car.lua /data/osm-latest.osm.pbf
-docker run -t -v $(pwd)/data:/data osrm/osrm-backend osrm-partition /data/osm-latest.osrm
-docker run -t -v $(pwd)/data:/data osrm/osrm-backend osrm-customize /data/osm-latest.osrm
-
-docker network create osrm
-docker-compose up osrm-backend
-# osrm-frontend official image broken....
+docker-compose up graphhopper
 
 ```
