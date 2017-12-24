@@ -151,7 +151,7 @@ names(rts) = brw$brewery
 #' @param segments Route segments
 go = function(x, id, js, len = 0, segments = NULL) {
   
-  if (len > 15000 | length(js) == 0) {
+  if (len > 12000 | length(js) == 0) {
     return(list(len, segments))
   } else {
     lns = sapply(1:length(x[[id]]), function(z) {
@@ -167,7 +167,7 @@ go = function(x, id, js, len = 0, segments = NULL) {
     new_segments = if (is.null(segments)) {
       x[[id]][new_id, ]
     } else {
-      rbind(segments, x[[id]])
+      rbind(segments, x[[id]][new_id, ])
     }
     
     new_len = len + lns[[new_id]]
@@ -179,13 +179,18 @@ go = function(x, id, js, len = 0, segments = NULL) {
   }
 }
 
-test = go(rts, id = 1, js = seq_along(rts)[-1])
+jnk = clusterEvalQ(cl, { library(raster); library(rgeos) })
+clusterExport(cl, c("rts", "go"))
+tracks = parLapply(cl, seq_along(brw), function(id) {
+  go(rts, id = id, js = seq_along(rts)[-id])
+})
 
-crd = coordinates(brw)
-jsn = fromJSON("http://localhost:11111/route?point=49.89223%2C10.88484&point=49.89734%2C10.89281&vehicle=hike&points_encoded=false")
-crd = jsn$paths$points$coordinates[[1]]
-sln = coords2Lines(crd, ID = 1, proj4string = CRS("+init=epsg:4326"))
-getRoutes(..., proj4string = CRS("+init=epsg:4326"))
+no_breweries = sapply(sapply(tracks, "[[", 2), length)
+ids = which(no_breweries == max(no_breweries))
 
-prj = spTransform(sln, CRS("+init=epsg:32632"))
-len = rgeos::gLength(prj)
+best = sapply(tracks[ids], "[[", 1)
+
+shp = do.call("rbind", sapply(tracks, "[[", 2))
+m = mapview(shp)
+mapshot(m, url = file.path(getwd(), "index.html")
+        , file = file.path(getwd(), "index.png"))
