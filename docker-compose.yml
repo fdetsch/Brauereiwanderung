@@ -12,3 +12,5 @@ services:
     command : ["/data/bayern-latest.osm.pbf"]
     environment:
       - JAVA_OPTS=-Xmx6G
+
+

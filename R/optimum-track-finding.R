@@ -6,6 +6,7 @@ rm(list = ls(all = TRUE))
 ## load packages
 library(mapview)
 library(raster)
+library(jsonlite)
 
 if (!require(Orcs)) {
   devtools::install_github("fdetsch/Orcs", local = FALSE)
@@ -49,9 +50,10 @@ dem = crop(dem, ext, snap = "out", filename = "data/ASTGTM2_NxxE0xx_dem.tif",
 #        col.regions = terrain.colors(111), at = seq(0, 1100, 10))
 
 ## calculate slope and aspect
-slp = terrain(dem, unit = "degrees", filename = "data/ASTGTM2_NxxE0xx_slp.tif")
-asp = terrain(dem, opt = 'aspect',unit = "degrees", 
-              filename = "data/ASTGTM2_NxxE0xx_asp.tif")
+slp = ifMissing("data/ASTGTM2_NxxE0xx_slp.tif", raster
+                , terrain, "filename", x = dem, unit = "degrees")
+asp = ifMissing("data/ASTGTM2_NxxE0xx_asp.tif", raster
+                , terrain, "filename", x = dem, unit = "degrees", opt = "aspect")
 
 
 ### openstreetmap data -----
@@ -97,6 +99,8 @@ osm = osm[ids]
 brw = as(breweries, "Spatial")
 brw = spTransform(brw, CRS("+init=epsg:32632"))
 
+brw = brw[-which(duplicated(brw$brewery)), ]
+
 ## breweries with a neighboring brewery in a 2-km radius
 ids = sapply(seq_along(brw), function(i) {
   bff = rgeos::gBuffer(brw[i, ], width = 2e3, quadsegs = 25)
@@ -114,3 +118,74 @@ ids = sapply(seq_along(brw), function(i) {
 })
 
 brw = brw[ids, ]
+
+## path length
+brw = spTransform(brw, CRS("+init=epsg:4326"))
+crd = coordinates(brw)
+
+source("R/getRoutes.R")
+
+library(parallel)
+cl = makePSOCKcluster(detectCores() - 1)
+clusterExport(cl, c("brw", "crd", "getRoutes"))
+jnk = clusterEvalQ(cl, library(raster))
+
+rts = parLapply(cl, seq_along(brw), function(i) {
+  lst = lapply(seq_along(brw), function(j) {
+    # geodist(crd[i, 2], crd[i, 1]
+    #         , crd[j, 2], crd[j, 1], units = "km") * 1e3
+    getRoutes(crd[i, ], crd[j, ], ID = brw$brewery[j]
+              , proj4string = CRS("+init=epsg:4326"))
+  })
+  
+  bnd = do.call("rbind", lst)
+  bnd = spTransform(bnd, CRS("+init=epsg:32632"))
+  
+  return(bnd)
+})
+
+names(rts) = brw$brewery
+
+#' @param i Start index
+#' @param js Remaining indices
+#' @param segments Route segments
+go = function(x, id, js, len = 0, segments = NULL) {
+  
+  if (len > 15000 | length(js) == 0) {
+    return(list(len, segments))
+  } else {
+    lns = sapply(1:length(x[[id]]), function(z) {
+      if (z == id | !(z %in% js)) {
+        return(1e6) 
+      } else {
+        return(gLength(x[[id]][z, ], byid = TRUE))
+      }        
+    })
+
+    new_id = which.min(lns)
+    
+    new_segments = if (is.null(segments)) {
+      x[[id]][new_id, ]
+    } else {
+      rbind(segments, x[[id]])
+    }
+    
+    new_len = len + lns[[new_id]]
+    
+    new_js = js[js != new_id]
+    # new_x = x[-new_id]
+    
+    go(x, new_id, new_js, new_len, new_segments)
+  }
+}
+
+test = go(rts, id = 1, js = seq_along(rts)[-1])
+
+crd = coordinates(brw)
+jsn = fromJSON("http://localhost:11111/route?point=49.89223%2C10.88484&point=49.89734%2C10.89281&vehicle=hike&points_encoded=false")
+crd = jsn$paths$points$coordinates[[1]]
+sln = coords2Lines(crd, ID = 1, proj4string = CRS("+init=epsg:4326"))
+getRoutes(..., proj4string = CRS("+init=epsg:4326"))
+
+prj = spTransform(sln, CRS("+init=epsg:32632"))
+len = rgeos::gLength(prj)
