@@ -36,3 +36,6 @@ vignettes/*.pdf
 # Graphhopper data
 data/*.osm-gh/
 *.pbf
+
+# OpenStreetMap data
+data/*-latest.osm.bz2
