@@ -9,7 +9,7 @@ services:
     ports:
       - "11111:11111"
       - "8989:8989"
-    command : ["/data/bayern-latest.osm.pbf"]
+    command : ["/data/oberfranken-latest.osm.pbf"]
     environment:
       - JAVA_OPTS=-Xmx6G
 

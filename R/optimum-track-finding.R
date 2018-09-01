@@ -7,11 +7,7 @@ rm(list = ls(all = TRUE))
 library(mapview)
 library(raster)
 library(jsonlite)
-
-if (!require(Orcs)) {
-  devtools::install_github("fdetsch/Orcs", local = FALSE)
-  library(Orcs)
-}
+library(Orcs)
 
 
 ### digital elevation model -----

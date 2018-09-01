@@ -8,6 +8,14 @@ wget http://download.geofabrik.de/europe/germany/bayern-latest.osm.bz2 ./data/ba
 docker-compose up graphhopper
 ```
 
+On Linux, you possibly need admin rights (`sudo`) when receiving this error:
+
+```sh
+ERROR: Couldn't connect to Docker daemon at http+docker://localunixsocket - is it running?
+
+If it's at a non-standard location, specify the URL with the DOCKER_HOST environment variable.
+```
+
 Open in browser
 ```sh
 http://localhost:11111/route?point=49.89223%2C10.88484&point=49.89734%2C10.89281&vehicle=hike&points_encoded=false
