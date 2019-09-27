@@ -1,4 +1,4 @@
-### environment -----
+### ENVIRONMENT ====
 
 ## clean-up workspace
 rm(list = ls(all = TRUE))
@@ -7,41 +7,37 @@ rm(list = ls(all = TRUE))
 library(mapview)
 library(raster)
 library(jsonlite)
-
-if (!require(Orcs)) {
-  devtools::install_github("fdetsch/Orcs", local = FALSE)
-  library(Orcs)
-}
+library(Orcs)
 
 
-### digital elevation model -----
+### PROCESSING ====
+
+### . digital elevation model -----
 
 ## spatial bounding box of registered breweries, required as shapefile input for 
 ## USGS Earth Explorer (https://earthexplorer.usgs.gov/)
-ext = as(extent(breweries), "SpatialPolygons")
-proj4string(ext) = "+init=epsg:4326"
-ext = SpatialPolygonsDataFrame(ext, data = data.frame(x = "breweries"))
+ext = sf::st_as_sfc(sf::st_bbox(breweries), crs = sf::st_crs(breweries))
 
 if (!file.exists("data/breweries.shp")) {
-  writeOGR(ext, "data", "breweries", "ESRI Shapefile")
+  sf::st_write(ext, "data/breweries.shp", driver = "ESRI Shapefile")
 }
 
 fls = list.files("data", pattern = "^breweries", full.names = TRUE)
 zip("data/breweries.zip", fls)
 
 ## after manual data download, extract and merge tiled elevation data
-zps = list.files("inst/extdata", pattern = "^ASTGTM.*.zip", full.names = TRUE)
+zps = list.files("inst/extdata/aster_dem", pattern = "^ASTGTM.*.zip", full.names = TRUE)
 dms = lapply(zps, function(i) {
   ifl = unzip(i, list = TRUE)$Name
   ids = grep("dem.tif$", ifl)
-  ofl = unzip(i, files = ifl[ids], exdir = "inst/extdata")
+  ofl = unzip(i, files = ifl[ids], exdir = "inst/extdata/aster_dem")
   rst = raster(ofl)
   
   return(rst)
 })
 
 dem = merge(dms)
-dem = crop(dem, ext, snap = "out", filename = "data/ASTGTM2_NxxE0xx_dem.tif", 
+dem = crop(dem, as(ext, "Spatial"), snap = "out", filename = "data/ASTGTM2_NxxE0xx_dem.tif", 
            datatype = "INT2U", overwrite = TRUE)
 
 # ## visualize data (optional)
@@ -56,14 +52,15 @@ asp = ifMissing("data/ASTGTM2_NxxE0xx_asp.tif", raster
                 , terrain, "filename", x = dem, unit = "degrees", opt = "aspect")
 
 
-### openstreetmap data -----
+### . openstreetmap data -----
 
 srv = "http://download.geofabrik.de/europe/germany/bayern/"
 zps = sapply(c("ober", "mittel", "unter"), function(region) {
   onl = paste0(srv, region, "franken-latest-free.shp.zip")
   ofl = gsub(srv, "inst/extdata/", onl)
   
-  ifMissing(ofl, invisible, download.file, "destfile", url = onl)
+  jnk = download.file(onl, ofl)
+  return(ofl)
 })
 
 library(parallel)
@@ -94,7 +91,7 @@ ids = sapply(c("ober", "mittel", "unter"), function(i) grep(i, osm))
 osm = osm[ids]
 
 
-### spatial analysis -----
+### . spatial analysis -----
 
 brw = as(breweries, "Spatial")
 brw = spTransform(brw, CRS("+init=epsg:32632"))
