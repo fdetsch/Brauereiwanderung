@@ -7,7 +7,7 @@ library(mapview)
 
 ### ROUTING ====
 
-## functions
+## decode() function (available online: https://cmhh.github.io/post/routing/)
 decode <- function(str, multiplier=1e5){
   
   if (!require(bitops)) stop("Package: bitops required.")
@@ -55,12 +55,16 @@ destination = brwrs[!tmp, ]
 o <- sf::st_coordinates(origin)
 d <- sf::st_coordinates(destination)
 
-profile = c("driving", "walking")
+profile = c("driving", "walking") # 2nd doesn't seem to work for some reason
 (url <- paste0("http://router.project-osrm.org/route/v1/", profile[1], "/", 
                o[1],",",o[2],";",d[1],",",d[2],"?overview=full"))
 
+route_car = try(log("e"), silent = TRUE)
 system.time({
-  route_car <- fromJSON(file=url)
+  while (inherits(route_car, "try-error")) {
+    route_car = try(suppressWarnings(fromJSON(file = url)), silent = TRUE)
+    Sys.sleep(.2) # go to sleep for .2 seconds
+  }
 })
 
 #create a basic map
@@ -70,13 +74,14 @@ m1
 
 
 ### . manual offline analog ----
+### (available online: https://github.com/MeganBeckett/presentations/blob/master/useR_2019/useR_2019_osrm.pdf)
 
 crd = paste0(o[1], ",", o[2], ";", d[1], ",", d[2])
 stdout = system(paste0('curl -s "http://127.0.0.1:5000/route/v1/walking/', crd, '"')
                 , intern = TRUE)
 
 route_foot = fromJSON(stdout)
-path_foot = decode(route$routes[[1]]$geometry, multiplier = 1e5)
+path_foot = decode(route_foot$routes[[1]]$geometry, multiplier = 1e5)
 
 m2 = m1 + mapview(path_foot, color = "orange")
 m2
@@ -90,6 +95,21 @@ library(osrm)
 ## set server and profile
 options(osrm.server = "http://127.0.0.1:5000/", osrm.profile = "walking")
 
+path_foot2 = osrmRoute(origin, destination, returnclass = "sf")
+m3 = m2 + mapview(path_foot2, color = "cornflowerblue")
+m3
+
+## get shortest travel geometry
 trips <- osrmTrip(loc = breweries[1:100, ], returnclass = "sf")
 
 mapview(trips[[1]]$trip) + breweries[1:100, ]
+
+## 
+options("osrm.profile" = "walk")
+lst = lapply(1:10, function(i) {
+  cat(i)
+  osrmIsochrone(breweries[i, ], returnclass = "sf"
+                , breaks = seq(from = 0, to = 60, length.out = 13))
+})
+
+mapview(iso)
