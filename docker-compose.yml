@@ -1,0 +1,17 @@
+version: '3.2'
+
+services:
+  graphhopper:
+    container_name: brauereiwanderung_graphhopper
+    image: graphhopper/graphhopper:stable
+    volumes:
+       - ./data:/data
+       - ./graphhopper/config.properties:/graphhopper/config.properties
+    ports:
+      - "11111:11111"
+      - "8989:8989"
+    command : ["/data/oberfranken-latest.osm.pbf"]
+    environment:
+      - JAVA_OPTS=-Xmx6G
+
+
