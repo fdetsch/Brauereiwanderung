@@ -2,6 +2,7 @@ version: '3.2'
 
 services:
   graphhopper:
+    container_name: brauereiwanderung_graphhopper
     image: graphhopper/graphhopper:stable
     volumes:
        - ./data:/data
