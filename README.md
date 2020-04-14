@@ -30,3 +30,8 @@ If it's at a non-standard location, specify the URL with the DOCKER_HOST environ
 > status code not OK but 500: {"Message":"Unhandled exception: Drive has not been shared"}
 
 make sure to check the required drive via Settings -> Resources -> File Sharing in Docker Desktop.
+
+
+### Useful resources
+
+* For those running Docker through Windows' subsystem for linux (WSU), you might want to follow this [Medium tutorial](https://medium.com/@sebagomez/installing-the-docker-client-on-ubuntus-windows-subsystem-for-linux-612b392a44c4).
