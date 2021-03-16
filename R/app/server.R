@@ -40,6 +40,7 @@ shinyServer(function(input, output) {
     )
   )
   
+  ## https://cran.r-project.org/web/packages/hereR/vignettes/geocoder.html
   aoi = reactive({
     hereR::geocode(
       loc()
